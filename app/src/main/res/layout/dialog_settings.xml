@@ -20,7 +20,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
         android:layout_marginBottom="16dp"
-        android:text="Configure your OpenRouter API key and model"
+        android:text="Supports Google Gemini Flash &amp; OpenRouter"
         android:textColor="@color/text_secondary"
         android:textSize="12sp" />
 
@@ -30,7 +30,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="12dp"
-        android:hint="OpenRouter API Key (Bearer Token)"
+        android:hint="Gemini Key (AIza...) or OpenRouter Key"
         app:boxBackgroundColor="@color/bg_card_inner"
         app:boxStrokeColor="@color/primary"
         app:hintTextColor="@color/primary_light"
@@ -51,7 +51,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="20dp"
-        android:hint="OpenRouter Model Identifier"
+        android:hint="AI Model (e.g. google/gemini-2.0-flash-001)"
         app:boxBackgroundColor="@color/bg_card_inner"
         app:boxStrokeColor="@color/primary"
         app:hintTextColor="@color/primary_light">
@@ -61,7 +61,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:inputType="text"
-            android:text="nvidia/nemotron-3.5-lightning:free"
+            android:text="google/gemini-2.0-flash-001"
             android:textColor="@color/text_primary"
             android:textSize="13sp" />
     </com.google.android.material.textfield.TextInputLayout>
