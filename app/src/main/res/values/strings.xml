@@ -1,0 +1,27 @@
+<resources>
+    <string name="app_name">EchoMind AI</string>
+    <string name="accessibility_service_label">EchoMind Volume-Up Trigger</string>
+    <string name="accessibility_service_description">Enables EchoMind AI to detect double-click of the Volume Up button to instantly capture multilingual voice reminders in Sinhala &amp; English from anywhere.</string>
+    
+    <string name="status_idle">Double-tap Volume Up or tap the mic to speak</string>
+    <string name="status_listening">Listening for voice reminder…</string>
+    <string name="status_processing">Processing with OpenRouter AI…</string>
+    
+    <string name="sinhala_listening">සවන් දෙමින් පවතී… (මතක් කිරීම පවසන්න)</string>
+    <string name="sinhala_processing">AI මඟින් වේලාව සහ මතක් කිරීම සකසමින් පවතී…</string>
+    <string name="sinhala_saved">මතක් කිරීම සාර්ථකව සටහන් විය!</string>
+
+    <string name="btn_record">Speak Reminder</string>
+    <string name="settings">Settings</string>
+    <string name="api_key">OpenRouter API Key</string>
+    <string name="model_name">AI Model</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="reminders_title">Active Reminders</string>
+    <string name="no_reminders">No scheduled reminders yet.\nTap the mic or double-click Volume Up to create one!</string>
+    <string name="permission_required">Permissions required for audio and notifications</string>
+    <string name="enable_accessibility">Enable Volume Up Trigger</string>
+    <string name="accessibility_active">Hardware trigger active (Double-click Vol Up)</string>
+    <string name="disable_battery_opt">Allow Background Execution</string>
+    <string name="battery_opt_active">Background execution optimized</string>
+</resources>
