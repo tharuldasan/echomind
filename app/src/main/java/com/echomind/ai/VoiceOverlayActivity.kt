@@ -4,12 +4,8 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.media.AudioAttributes
-import android.media.RingtoneManager
 import android.os.Build
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -20,9 +16,7 @@ import android.util.Log
 import android.view.View
 import android.view.animation.AlphaAnimation
 import android.view.animation.Animation
-import android.view.animation.ScaleAnimation
 import android.widget.ImageButton
-import android.widget.LinearLayout
 import android.widget.RelativeLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -30,9 +24,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.google.android.material.card.MaterialCardView
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 class VoiceOverlayActivity : AppCompatActivity() {
 
@@ -48,12 +39,8 @@ class VoiceOverlayActivity : AppCompatActivity() {
     private lateinit var tvOverlayStatus: TextView
     private lateinit var tvOverlaySubtitle: TextView
     private lateinit var tvSpokenLive: TextView
-    private lateinit var layoutSuccessCard: LinearLayout
-    private lateinit var tvResultTitle: TextView
-    private lateinit var tvResultTime: TextView
 
     private var speechRecognizer: SpeechRecognizer? = null
-    private val handler = Handler(Looper.getMainLooper())
     private var isListening = false
 
     private val permissionLauncher = registerForActivityResult(
@@ -90,9 +77,6 @@ class VoiceOverlayActivity : AppCompatActivity() {
         tvOverlayStatus = findViewById(R.id.tvOverlayStatus)
         tvOverlaySubtitle = findViewById(R.id.tvOverlaySubtitle)
         tvSpokenLive = findViewById(R.id.tvSpokenLive)
-        layoutSuccessCard = findViewById(R.id.layoutSuccessCard)
-        tvResultTitle = findViewById(R.id.tvResultTitle)
-        tvResultTime = findViewById(R.id.tvResultTime)
     }
 
     private fun setupListeners() {
@@ -106,11 +90,16 @@ class VoiceOverlayActivity : AppCompatActivity() {
         }
 
         cardFloating.setOnClickListener {
-            // Consume click so inside card won't dismiss
+            // Consume click
         }
 
+        // Tap mic while listening to immediately stop and process
         btnOverlayMic.setOnClickListener {
-            if (!isListening) {
+            if (isListening) {
+                try {
+                    speechRecognizer?.stopListening()
+                } catch (ignored: Exception) {}
+            } else {
                 startInAppSpeechRecognition()
             }
         }
@@ -127,20 +116,25 @@ class VoiceOverlayActivity : AppCompatActivity() {
 
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            // Explicit Sinhala (Sri Lanka) primary language
+            // Primary Sinhala (Sri Lanka)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, "si-LK")
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "si-LK")
             putExtra("android.speech.extra.EXTRA_ADDITIONAL_LANGUAGES", arrayOf("si-LK", "en-US", "ta-LK", "si"))
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
+            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 2)
             putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, packageName)
+
+            // Fast silence detection (No waiting lag)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 600L)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 600L)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 600L)
         }
 
         speechRecognizer?.setRecognitionListener(object : RecognitionListener {
             override fun onReadyForSpeech(params: Bundle?) {
                 isListening = true
                 tvOverlayStatus.text = "සවන් දෙමින් පවතී… (මතක් කිරීම පවසන්න)"
-                tvOverlaySubtitle.text = "Listening in Sinhala / English"
+                tvOverlaySubtitle.text = "Listening (Tap mic when done)"
                 startPulseAnimation()
             }
 
@@ -150,7 +144,6 @@ class VoiceOverlayActivity : AppCompatActivity() {
             }
 
             override fun onRmsChanged(rmsdB: Float) {
-                // Animate mic pulse according to voice amplitude
                 val scale = 1.0f + (rmsdB.coerceAtLeast(0f) / 10f) * 0.4f
                 viewPulseCircle.scaleX = scale
                 viewPulseCircle.scaleY = scale
@@ -160,8 +153,6 @@ class VoiceOverlayActivity : AppCompatActivity() {
 
             override fun onEndOfSpeech() {
                 isListening = false
-                tvOverlayStatus.text = "AI මඟින් වේලාව සහ මතක් කිරීම සකසමින් පවතී…"
-                tvOverlaySubtitle.text = "Analyzing reminder with AI..."
                 stopPulseAnimation()
             }
 
@@ -170,10 +161,9 @@ class VoiceOverlayActivity : AppCompatActivity() {
                 stopPulseAnimation()
                 Log.w(TAG, "SpeechRecognizer error: $error")
                 
-                // If no speech heard, allow tap to retry
                 if (error == SpeechRecognizer.ERROR_NO_MATCH || error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT) {
                     tvOverlayStatus.text = "කිසිවක් ඇසුණේ නැත. නැවත කතා කරන්න."
-                    tvOverlaySubtitle.text = "Tap mic to try again"
+                    tvOverlaySubtitle.text = "Tap mic to retry"
                 } else {
                     fallbackToIntentSpeech()
                 }
@@ -186,7 +176,7 @@ class VoiceOverlayActivity : AppCompatActivity() {
                 val spokenText = matches?.firstOrNull() ?: ""
 
                 if (spokenText.isNotBlank()) {
-                    handleSpokenText(spokenText)
+                    dispatchAndCloseImmediately(spokenText)
                 } else {
                     tvOverlayStatus.text = "කිසිවක් ඇසුණේ නැත."
                     tvOverlaySubtitle.text = "Tap mic to retry"
@@ -232,7 +222,7 @@ class VoiceOverlayActivity : AppCompatActivity() {
             val matches = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
             val spokenText = matches?.firstOrNull() ?: ""
             if (spokenText.isNotBlank()) {
-                handleSpokenText(spokenText)
+                dispatchAndCloseImmediately(spokenText)
             } else {
                 finish()
             }
@@ -241,76 +231,37 @@ class VoiceOverlayActivity : AppCompatActivity() {
         }
     }
 
-    private fun handleSpokenText(spokenText: String) {
-        tvSpokenLive.visibility = View.VISIBLE
-        tvSpokenLive.text = "\"$spokenText\""
-        tvOverlayStatus.text = "AI මඟින් වේලාව සහ මතක් කිරීම සකසමින් පවතී…"
-        tvOverlaySubtitle.text = "Extracting task & schedule with OpenRouter AI..."
-
-        OpenRouterEngine.processVoicePrompt(
-            context = this,
-            rawText = spokenText,
-            onSuccess = { reminder ->
-                runOnUiThread {
-                    showSuccessAndDismiss(reminder)
-                }
-            },
-            onError = { errorMessage ->
-                runOnUiThread {
-                    tvOverlayStatus.text = "⚠️ $errorMessage"
-                    tvOverlaySubtitle.text = "Tap mic to retry"
-                    Toast.makeText(this, errorMessage, Toast.LENGTH_LONG).show()
-                }
-            }
-        )
-    }
-
-    private fun showSuccessAndDismiss(reminder: Reminder) {
-        triggerSuccessFeedback()
-
-        tvOverlayStatus.text = "✅ මතක් කිරීම සාර්ථකව සටහන් විය!"
-        tvOverlaySubtitle.text = "Reminder successfully saved!"
-
-        tvResultTitle.text = reminder.title
-        if (reminder.targetTimeMs > 0) {
-            val sdf = SimpleDateFormat("EEE, MMM d 'at' hh:mm a", Locale.getDefault())
-            tvResultTime.text = "⏰ Alarm Set for " + sdf.format(Date(reminder.targetTimeMs))
-            tvResultTime.visibility = View.VISIBLE
-        } else {
-            tvResultTime.text = "📝 Saved as task note"
-            tvResultTime.visibility = View.VISIBLE
-        }
-
-        layoutSuccessCard.visibility = View.VISIBLE
-        tvSpokenLive.visibility = View.GONE
-
-        // Auto-finish after 1.8 seconds so user sees confirmation cleanly
-        handler.postDelayed({
-            if (!isFinishing && !isDestroyed) {
-                finish()
-            }
-        }, 1800)
-    }
-
-    private fun triggerSuccessFeedback() {
+    /**
+     * Instantly triggers background AI processing and closes the overlay without waiting!
+     */
+    private fun dispatchAndCloseImmediately(spokenText: String) {
+        // Quick haptic feedback
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 val vibratorManager = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
                 vibratorManager?.defaultVibrator?.vibrate(
-                    VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE)
+                    VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE)
                 )
             } else {
                 @Suppress("DEPRECATION")
                 val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
                 @Suppress("DEPRECATION")
-                vibrator?.vibrate(100)
+                vibrator?.vibrate(50)
             }
         } catch (ignored: Exception) {}
+
+        Toast.makeText(applicationContext, "🎙️ \"$spokenText\"\nමතක් කිරීම සකසමින් පවතී...", Toast.LENGTH_SHORT).show()
+
+        // Run AI processing in background
+        OpenRouterEngine.processVoicePromptInBackground(applicationContext, spokenText)
+
+        // Close overlay immediately so user is not blocked!
+        finish()
     }
 
     private fun startPulseAnimation() {
         val anim = AlphaAnimation(0.25f, 0.7f).apply {
-            duration = 600
+            duration = 500
             repeatMode = Animation.REVERSE
             repeatCount = Animation.INFINITE
         }
@@ -333,7 +284,6 @@ class VoiceOverlayActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        handler.removeCallbacksAndMessages(null)
         try {
             speechRecognizer?.destroy()
         } catch (ignored: Exception) {}
